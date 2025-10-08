@@ -1,0 +1,19 @@
+[
+    {   
+        "id": "01",
+        "name": "desasombrado",
+        "link": "/wiki/desasombrado",
+        "connections": [{
+           "id": "01",
+            "name": "desasombrado",
+            "link": "/wiki/desasombrado"
+        }]
+    },
+    {
+        "id": "02",
+        "name": "anfitrião",
+        "link": "/wiki/anfitrião",
+        "connections": []
+    }
+
+]

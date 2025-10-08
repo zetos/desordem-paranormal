@@ -11,8 +11,10 @@
     "dev": "tsx watch index.ts"
   },
   "dependencies": {
+    "cheerio": "^1.1.2",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "wikijs": "^6.4.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
