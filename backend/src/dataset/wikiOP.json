@@ -1,13 +1,9 @@
 [
     {   
-        "id": "01",
+        "id": "1827",
         "name": "desasombrado",
         "link": "/wiki/desasombrado",
-        "connections": [{
-           "id": "01",
-            "name": "desasombrado",
-            "link": "/wiki/desasombrado"
-        }]
+        "connections": ["12","13","05"]
     },
     {
         "id": "02",

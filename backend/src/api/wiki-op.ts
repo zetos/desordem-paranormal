@@ -12,18 +12,16 @@ export class WikiOp {
       console.log(error, " na GetPageNames");
     }
   }
-  public static async GetHTMLPage(pageName: string) {
+
+  public static async getPage(pageName: string) {
     try {
       const page = await wiki({
         apiUrl: "https://ordemparanormal.fandom.com/api.php",
       }).page(pageName);
 
-      const htmlPage = await page.html();
-      const pageId = page.raw.pageid;
-
-      return { htmlPage, pageId };
+      return page;
     } catch (error) {
-      console.log(error, " na GetHTMLPage");
+      console.log(error, " na GetPage");
     }
   }
 }
