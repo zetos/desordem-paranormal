@@ -60,7 +60,6 @@ export class DataSetService {
         console.info(
           `[INFO] Building title: ${pageObj.raw.title} - [${i} / ${filteredPages.length}]`
         );
-        i++;
 
         pageData[pageObj.raw.title] = {
           id: pageObj.raw.pageid,
@@ -71,6 +70,7 @@ export class DataSetService {
           ),
         };
       }
+      i++;
     }
 
     return pageData;
