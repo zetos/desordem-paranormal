@@ -6,6 +6,9 @@ interface pagesObjInterface {
   id: number;
   name: string;
   link: string;
+}
+
+interface pagesObjInterfaceConnected extends pagesObjInterface {
   connections: string[];
 }
 
@@ -58,17 +61,14 @@ export class DataSetService {
     let i = 0;
     for (const pageObj of filteredPages) {
       if (pageObj && pageData[pageObj.raw.title] === undefined) {
-        console.info(
-          `[INFO] Building title: ${pageObj.raw.title} - [${i} / ${filteredPages.length}]`
-        );
+        // console.info(
+        //   `[INFO] Building title: ${pageObj.raw.title} - [${i} / ${filteredPages.length}]`
+        // );
 
         pageData[pageObj.raw.title] = {
           id: pageObj.raw.pageid,
           name: pageObj.raw.title,
           link: pageObj.raw.fullurl,
-          connections: (await this.GetPageConnections(pageObj.raw.title)).map(
-            (x) => String(x)
-          ),
         };
       }
       i++;
@@ -116,13 +116,27 @@ export class DataSetService {
       connections.push(page.raw.pageid);
     }
 
-    // console.info('[INFO] Connections:', connections.length);
-    return connections;
+    return { pageName, connections: connections.map(String) };
   }
 
   public static async GetAllInfo() {
-    const pageData = await this.GetAllPages();
-    const filepath = await DataSetRepository.writeDataSet(pageData);
+    const pagesData = await this.GetAllPages();
+
+    const pageConnectionsFun = Object.values(pagesData).map(
+      (page) => () => this.GetPageConnections(page.name)
+    );
+    const pageConnectionsResolved = await Promise.all(
+      pageConnectionsFun.map((f) => f())
+    );
+
+    const connectedPageData: pagesObjInterfaceConnected[] =
+      pageConnectionsResolved.map((pg) => ({
+        ...pagesData[pg.pageName]!,
+        connections: pg.connections,
+      }));
+
+    // Save to json file
+    const filepath = await DataSetRepository.writeDataSet(connectedPageData);
     console.info(`[INFO] Dataset written to: ${filepath}`);
     return filepath;
   }
