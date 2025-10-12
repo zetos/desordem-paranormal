@@ -46,7 +46,9 @@ export class WikiOp {
 
       return page;
     } catch (error) {
-      console.error('[ERROR] getPage:', (error as Error).message);
+      console.error(
+        `[ERROR] getPage ${pageName}:, ${(error as Error).message}`
+      );
     }
   }
 
