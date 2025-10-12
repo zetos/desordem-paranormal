@@ -26,7 +26,8 @@ export class DataSetService {
     getValue: (item: T) => string
   ): T[] {
     return items.filter(
-      (item) => !this.blackList.some((str) => getValue(item).includes(str))
+      (item) =>
+        item && !this.blackList.some((str) => getValue(item).includes(str))
     );
   }
 
@@ -50,7 +51,7 @@ export class DataSetService {
     );
 
     const filteredPages = this.filterBlacklisted(
-      everyPageResolved.filter((page) => page !== null),
+      everyPageResolved,
       (page) => page!.raw.title
     );
 
