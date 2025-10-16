@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { WikiOp } from '../api/wiki-op.js';
 import { DataSetRepository } from '../repository/data-set-repository.js';
+import type { WikiPage } from 'wikijs';
 
 interface pagesObjInterface {
   id: number;
@@ -34,21 +35,18 @@ export class DataSetService {
     );
   }
 
-  public static async GetAllPages(): Promise<
-    Record<string, pagesObjInterface>
-  > {
+  public static async GetAllPages(): Promise<Map<string, WikiPage>> {
     const pageNames = await WikiOp.GetPageNames();
-    const pageData: Record<string, pagesObjInterface> = {};
+    const pageMap = new Map<string, WikiPage>();
 
     if (!pageNames) {
       throw new Error('pageNames not found.');
     }
 
     const everyPagePromise = pageNames.map(
-      (name) => () => WikiOp.getPageCached(name)
+      (name) => () => WikiOp.getPage(name)
     );
 
-    // TODO: instead of making every request at once, separating it into smaller chunks would be a better etiquette.
     const everyPageResolved = await Promise.all(
       everyPagePromise.map((f) => f())
     );
@@ -58,30 +56,23 @@ export class DataSetService {
       (page) => page!.raw.title
     );
 
-    let i = 0;
     for (const pageObj of filteredPages) {
-      if (pageObj && pageData[pageObj.raw.title] === undefined) {
-        // console.info(
-        //   `[INFO] Building title: ${pageObj.raw.title} - [${i} / ${filteredPages.length}]`
-        // );
-
-        pageData[pageObj.raw.title] = {
-          id: pageObj.raw.pageid,
-          name: pageObj.raw.title,
-          link: pageObj.raw.fullurl,
-        };
+      if (pageObj && !pageMap.has(pageObj.raw.title)) {
+        pageMap.set(pageObj.raw.title, pageObj);
       }
-      i++;
     }
 
-    return pageData;
+    return pageMap;
   }
 
-  public static async GetPageConnections(pageName: string) {
-    const getPage = await WikiOp.getPageCached(pageName);
-    const htmlPage = await getPage?.html();
-    const page = cheerio.load(htmlPage ?? '');
-    const links = page('a').toArray();
+  public static async GetPageConnections(
+    page: WikiPage,
+    pageName: string,
+    allPagesMap: Map<string, WikiPage>
+  ) {
+    const htmlPage = await page.html();
+    const $ = cheerio.load(htmlPage ?? '');
+    const links = $('a').toArray();
     const connections: number[] = [];
 
     const allPagesRecord: Record<string, string> = {};
@@ -102,40 +93,41 @@ export class DataSetService {
       (entry) => entry[1]
     );
 
-    const allPagesEntries = filteredEntries.map(
-      (entry) => () => WikiOp.getPageCached(entry[1])
-    );
-    const allPagesEntriesResolved = await Promise.all(
-      allPagesEntries.map((fun) => fun())
-    );
-
-    for (const page of allPagesEntriesResolved) {
-      if (!page) {
-        continue;
+    for (const [_, title] of filteredEntries) {
+      const linkedPage = allPagesMap.get(title);
+      if (linkedPage) {
+        connections.push(linkedPage.raw.pageid);
       }
-      connections.push(page.raw.pageid);
     }
 
     return { pageName, connections: connections.map(String) };
   }
 
   public static async GetAllInfo() {
-    const pagesData = await this.GetAllPages();
+    const pageMap = await this.GetAllPages();
 
-    const pageConnectionsFun = Object.values(pagesData).map(
-      (page) => () => this.GetPageConnections(page.name)
+    const pageConnectionsFun = Array.from(pageMap.entries()).map(
+      ([pageName, wikiPage]) => () =>
+        this.GetPageConnections(wikiPage, pageName, pageMap)
     );
     const pageConnectionsResolved = await Promise.all(
       pageConnectionsFun.map((f) => f())
     );
 
     const connectedPageData: pagesObjInterfaceConnected[] =
-      pageConnectionsResolved.map((pg) => ({
-        ...pagesData[pg.pageName]!,
-        connections: pg.connections,
-      }));
+      pageConnectionsResolved.map((pg) => {
+        const wikiPage = pageMap.get(pg.pageName);
+        if (!wikiPage) {
+          throw new Error(`WikiPage not found for: ${pg.pageName}`);
+        }
+        return {
+          id: wikiPage.raw.pageid,
+          name: wikiPage.raw.title,
+          link: wikiPage.raw.fullurl,
+          connections: pg.connections,
+        };
+      });
 
-    // Save to json file
     const filepath = await DataSetRepository.writeDataSet(connectedPageData);
     console.info(`[INFO] Dataset written to: ${filepath}`);
     return filepath;
